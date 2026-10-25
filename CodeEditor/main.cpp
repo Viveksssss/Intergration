@@ -1,3 +1,4 @@
+#include "codeeditor.h"
 #include "mainwindow.h"
 
 #include <QApplication>
@@ -6,8 +7,7 @@
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
-    QPlainTextEdit editor;
-    editor.setPlainText(R"SRC(// ------------------------------------------------------------------
+    const char* kDemoSource = R"SRC(// ------------------------------------------------------------------
 //  演示文件：这块内容会被 CodeHighlighter 着色、被 FoldManager 扫描
 //  点行号左边的三角可以折叠；光标贴着括号会高亮配对的另一个
 // ------------------------------------------------------------------
@@ -61,13 +61,18 @@ int main(int argc, char **argv)
 
     Shape s(8);
     QPlainTextEdit editor;
-    editor.setPlainText("hello { world }");
+    editor.setPlainText("hello { world }");editor.setPlainText("hello { world }");editor.setPlainText("hello { world }");editor.setPlainText("hello { world }");editor.setPlainText("hello { world }");editor.setPlainText("hello { world }");editor.setPlainText("hello { world }");editor.setPlainText("hello { world }");editor.setPlainText("hello { world }");editor.setPlainText("hello { world }");
     editor.show();
 
     return app.exec();
 }
-)SRC");
-    editor.resize(1080, 720);
+)SRC";
+
+    CodeEditor editor;
+    editor.setPlainText(QString::fromUtf8(kDemoSource));
+    editor.resize(1080,720);
+    editor.setWordWrapEnabled(true);
     editor.show();
+
     return app.exec();
 }
