@@ -36,7 +36,7 @@ inline const QColor kOperator      (0x56,0xb6,0xc2);   // + - = :: 等
 
 // ── 括号匹配
 inline const QColor kMatchBg       (0x3a,0x4a,0x5a);   // 匹配到的括号底色
-inline const QColor kMatchFg       (0xff,0xd4,0x79);   // 匹配到的括号字色
+inline const QColor kMatchFg       (0xff,0x11,0x00);   // 匹配到的括号字色
 
 // ── 折叠后的占位提示
 inline const QColor kFoldHintBg    (0x2b,0x2b,0x36);

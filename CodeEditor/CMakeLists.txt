@@ -9,7 +9,8 @@ find_package(Qt6 REQUIRED COMPONENTS Core)
 find_package(Qt6 REQUIRED COMPONENTS Widgets)
 qt_standard_project_setup()          # 打开 AUTOMOC
 
-qt_add_executable(CodeEditor
+qt_add_executable(CodeEditor WIN32
+    app.rc
     main.cpp
     theme.h            theme.cpp
     codeeditor.h       codeeditor.cpp
@@ -18,6 +19,8 @@ qt_add_executable(CodeEditor
     linenumberarea.h linenumberarea.cpp
     codehighlighter.h codehighlighter.cpp
     bracketmatcher.h bracketmatcher.cpp
+    foldmanager.h foldmanager.cpp
+    mainwindow.h mainwindow.cpp
 )
 
 target_link_libraries(CodeEditor PRIVATE Qt6::Widgets)

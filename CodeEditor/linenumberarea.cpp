@@ -6,6 +6,7 @@ LineNumberArea::LineNumberArea(CodeEditor *parent)
     , _editor(parent)
 {
     setCursor(Qt::ArrowCursor);
+    setMouseTracking(true);
 }
 
 QSize LineNumberArea::sizeHint() const
@@ -16,4 +17,24 @@ QSize LineNumberArea::sizeHint() const
 void LineNumberArea::paintEvent(QPaintEvent *event)
 {
     _editor->lineNumberAreaPaintEvent(event);
+}
+
+void LineNumberArea::mousePressEvent(QMouseEvent *event)
+{
+    if (event->button()  == Qt::LeftButton){
+        _editor->handleGutterClick(event->pos());
+    }
+    QWidget::mousePressEvent(event);
+}
+
+void LineNumberArea::mouseMoveEvent(QMouseEvent *event)
+{
+    _editor->handleGutterHover(event->pos());
+    QWidget::mouseMoveEvent(event);
+}
+
+void LineNumberArea::leaveEvent(QEvent *event)
+{
+    _editor->handleGutterHover(QPoint(-1, -1));
+    QWidget::leaveEvent(event);
 }
