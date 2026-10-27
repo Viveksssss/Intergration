@@ -508,6 +508,14 @@ void CodeEditor::keyPressEvent(QKeyEvent *event)
     const bool plainReturn = (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter)
     && (event->modifiers() & ~Qt::KeypadModifier) == Qt::NoModifier;
 
+    if (event->key() == Qt::Key_Return && (event->modifiers() & Qt::ControlModifier)){
+        QTextCursor c = textCursor();
+        c.movePosition(QTextCursor::EndOfBlock);
+        c.insertBlock();
+        setTextCursor(c);
+        return;
+    }
+
 
     if (event->key() == Qt::Key_Tab && event->modifiers() == Qt::NoModifier) {
         insertPlainText(QStringLiteral("    "));   // 插入 4 个空格而不是制表符

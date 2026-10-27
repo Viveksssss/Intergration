@@ -13,6 +13,7 @@ qt_standard_project_setup()          # 打开 AUTOMOC
 set(EXTRA_SOURCES
     fileexplorer.h     fileexplorer.cpp
     editortabs.h       editortabs.cpp
+    fileops.h          fileops.cpp
 )
 
 qt_add_executable(CodeEditor WIN32

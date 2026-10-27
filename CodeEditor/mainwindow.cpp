@@ -93,6 +93,14 @@ void MainWindow::buildCentralArea()
     connect(_explorer, &FileExplorer::openFolderRequested,
             this, &MainWindow::openFolder);
 
+    // 资源管理器改名 / 删除 -> 同步已打开的标签页
+    //  不接这两个信号的话，改名后再 Ctrl+S 会写回旧文件名（相当于复活旧文件），
+    //  删掉文件后按 Ctrl+S 又会把它重新创建出来。
+    connect(_explorer, &FileExplorer::fileRenamed,
+            this, &MainWindow::onFileRenamed);
+    connect(_explorer, &FileExplorer::pathDeleted,
+            this, &MainWindow::onPathDeleted);
+
     // 标签页切换 -> 换当前编辑器
     connect(_tabs, &EditorTabs::currentEditorChanged,
             this, &MainWindow::onEditorChanged);
@@ -125,6 +133,26 @@ void MainWindow::onFileActivated(const QString &path)
         _explorer->openFolder(QFileInfo(path).absolutePath());
         _explorer->setVisible(true);
     }
+}
+
+void MainWindow::onFileRenamed(const QString &oldPath, const QString &newPath)
+{
+    _tabs->notifyFileRenamed(oldPath, newPath);
+
+    // 如果改的正是当前标签，标题栏也要跟着变
+    if (_editor && _tabs->currentFilePath() == QFileInfo(newPath).absoluteFilePath())
+        setWindowTitle(QStringLiteral("CodeEditor — %1")
+                           .arg(QFileInfo(newPath).fileName()));
+
+    statusBar()->showMessage(
+        QStringLiteral("已重命名：%1 → %2")
+            .arg(QFileInfo(oldPath).fileName(), QFileInfo(newPath).fileName()), 3000);
+}
+
+void MainWindow::onPathDeleted(const QString &path)
+{
+    _tabs->notifyPathDeleted(path);
+    statusBar()->showMessage(QStringLiteral("已删除：%1").arg(QFileInfo(path).fileName()), 3000);
 }
 
 void MainWindow::openFolder()

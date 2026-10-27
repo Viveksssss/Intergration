@@ -58,6 +58,9 @@ private slots:
     void onEditorChanged(CodeEditor *editor);
     void onFileActivated(const QString &path);
     void toggleExplorer();
+    // 资源管理器改名 / 删除后同步标签页
+    void onFileRenamed(const QString &oldPath, const QString &newPath);
+    void onPathDeleted(const QString &path);
 
 private:
     void buildToolBar();

@@ -60,6 +60,12 @@ public:
 
     int indexOfFile(const QString &filePath) const;
 
+    // ── 资源管理器改动文件后，同步已打开的标签
+    // 重命名：把该路径的标签换成新路径（标签文字也跟着变）
+    void notifyFileRenamed(const QString &oldPath, const QString &newPath);
+    // 删除：把该路径（及其子路径）的标签直接关掉，不弹保存提示
+    void notifyPathDeleted(const QString &path);
+
     void setCurrentEditor(CodeEditor *editor);
     void refreshTabText(int index);
 

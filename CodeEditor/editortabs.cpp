@@ -555,6 +555,72 @@ int EditorTabs::editorCount() const
     return n;
 }
 
+// ---------------------------------------------------------------------------
+//  资源管理器改名 / 删除后的同步
+//
+//  文件被动过之后，已打开标签里的「filePath」就过期了：
+//    - 改名：不移过去的话，之后 Ctrl+S 会把内容写回**旧文件名**，
+//            等于"复活"了一个用户刚改走的文件，这是最容易踩的坑。
+//    - 删除：标签还留着，再按 Ctrl+S 就会把文件又创建回来。
+// ---------------------------------------------------------------------------
+void EditorTabs::notifyFileRenamed(const QString &oldPath, const QString &newPath)
+{
+    if (oldPath.isEmpty() || newPath.isEmpty())
+        return;
+
+    const QString oldAbs = QFileInfo(oldPath).absoluteFilePath();
+    const QString newAbs = QFileInfo(newPath).absoluteFilePath();
+
+    for (int i = 0; i < count(); ++i) {
+        CodeEditor *e = editorAt(i);
+        if (!e)
+            continue;
+
+        const QString p = QFileInfo(e->property(kPropPath).toString()).absoluteFilePath();
+        if (p != oldAbs)
+            continue;
+
+        e->setProperty(kPropPath, newAbs);
+        setTabToolTip(i, QDir::toNativeSeparators(newAbs));
+        refreshTabText(i);
+    }
+}
+
+void EditorTabs::notifyPathDeleted(const QString &path)
+{
+    if (path.isEmpty())
+        return;
+
+    const QFileInfo target(path);
+    const QString targetAbs = target.absoluteFilePath();
+    const bool isDir = target.isDir();
+
+    // 倒序：removeTab 会让后面的下标前移
+    for (int i = count() - 1; i >= 0; --i) {
+        CodeEditor *e = editorAt(i);
+        if (!e)
+            continue;
+
+        const QString p = QFileInfo(e->property(kPropPath).toString()).absoluteFilePath();
+        if (p.isEmpty())
+            continue;
+
+        // 删的是目录时，目录下的所有文件标签也要一起关
+        const bool hit = (p == targetAbs)
+                         || (isDir && p.startsWith(targetAbs + QLatin1Char('/')));
+        if (!hit)
+            continue;
+
+        removeTab(i);
+        e->deleteLater();
+    }
+
+    renumberCloseButtons();
+
+    if (count() == 1 && widget(0) == _blank)
+        emit currentEditorChanged(nullptr);
+}
+
 bool EditorTabs::eventFilter(QObject *watched, QEvent *event)
 {
     if (watched == _blank && event->type() == QEvent::MouseButtonRelease) {
