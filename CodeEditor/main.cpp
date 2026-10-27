@@ -17,23 +17,14 @@ int main(int argc, char *argv[])
     MainWindow window;
     window.show();
 
+    // 命令行参数统一走「标签页」，不再各个分支里手动 setPlainText
     const QStringList args = app.arguments();
     if (args.size() == 2){
-        const QString path = args.at(1);
-        QFile file(path);
-        if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            window.editor()->setPlainText(QString::fromUtf8(file.readAll()));
-            window.editor()->document()->setModified(false);
-        }
+        window.openPath(args.at(1));
     }else{
         const int openIdx = args.indexOf(QStringLiteral("--open"));
         if (openIdx >= 0 && openIdx + 1 < args.size()) {
-            const QString path = args.at(openIdx + 1);
-            QFile file(path);
-            if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-                window.editor()->setPlainText(QString::fromUtf8(file.readAll()));
-                window.editor()->document()->setModified(false);
-            }
+            window.openPath(args.at(openIdx + 1));
         }
     }
 

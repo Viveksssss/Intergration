@@ -9,6 +9,12 @@ find_package(Qt6 REQUIRED COMPONENTS Core)
 find_package(Qt6 REQUIRED COMPONENTS Widgets)
 qt_standard_project_setup()          # 打开 AUTOMOC
 
+# ---- 本次新增的文件单独列成变量，方便「想退回原版时只删这几行」 ----
+set(EXTRA_SOURCES
+    fileexplorer.h     fileexplorer.cpp
+    editortabs.h       editortabs.cpp
+)
+
 qt_add_executable(CodeEditor WIN32
     app.rc
     main.cpp
@@ -21,6 +27,7 @@ qt_add_executable(CodeEditor WIN32
     bracketmatcher.h bracketmatcher.cpp
     foldmanager.h foldmanager.cpp
     mainwindow.h mainwindow.cpp
+    ${EXTRA_SOURCES}
 )
 
 target_link_libraries(CodeEditor PRIVATE Qt6::Widgets)
