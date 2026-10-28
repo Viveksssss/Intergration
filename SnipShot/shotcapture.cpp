@@ -208,4 +208,141 @@ QImage makeTestDesktop()
     return img;
 }
 
+void drawArrow(QPainter &p, const QPointF &tail, const QPointF &head,
+               const QColor &c, int w)
+{
+    const QLineF line(tail, head);
+    const qreal len = line.length();
+    if (len < 1.0)
+        return;
+
+    // 头长随线长增长，但有上下限，太短太长的箭头都难看
+    const qreal headLen  = qBound(10.0, len * 0.32, 22.0 + w * 2.0);
+    const qreal headHalf = headLen * 0.46;
+
+    const QPointF dir = (head - tail) / len;          // 单位方向
+    const QPointF base = head - dir * headLen;        // 三角形底边中点
+
+    p.setPen(QPen(c, w, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+    p.setBrush(Qt::NoBrush);
+    p.drawLine(tail, base);
+
+    const QPointF n(-dir.y(), dir.x());               // 法向量
+    QPolygonF tri;
+    tri << head
+        << (base + n * headHalf)
+        << (base - n * headHalf);
+
+    p.setPen(Qt::NoPen);
+    p.setBrush(c);
+    p.drawPolygon(tri);
+}
+
+void drawMosaic(QPainter&p,const QImage&shot,const QRectF&rect,int block){
+    if (block < 2){
+        block = 2;
+    }
+
+    const qreal dpr = shot.devicePixelRatio() > 0 ? shot.devicePixelRatio() : 1.0;
+    QRect srcPx(qRound(rect.x() * dpr),qRound(rect.y()*dpr),qRound(rect.width()*dpr),qRound(rect.height()*dpr));
+    srcPx = srcPx.intersected(QRect(QPoint(0,0),shot.size()));
+    if (srcPx.width() < 2 || srcPx.height() < 2){
+        return;
+    }
+
+    const int blockPx = qMax(2,qRound(block*dpr));
+    const int bw = qMax(1,srcPx.width() / blockPx);
+    const int bh = qMax(1,srcPx.height() / blockPx);
+
+    const QImage tile = shot.copy(srcPx);
+    const QImage tiny = tile.scaled(bw, bh, Qt::IgnoreAspectRatio,
+                                    Qt::FastTransformation);
+
+    p.save();
+    p.setRenderHint(QPainter::SmoothPixmapTransform, false);
+    p.drawImage(rect, tiny);       // 目标用逻辑坐标，Qt 自己乘 dpr
+    p.restore();
+}
+
+void paintOne(QPainter &p, const QImage &shot, const Annotation &a)
+{
+    p.save();
+    p.setRenderHint(QPainter::Antialiasing,true);
+
+    switch(a.tool){
+    case Tool::None:{
+        break;
+    }
+    case Tool::Rect:{
+        p.setPen(QPen(a.color,a.width,Qt::SolidLine,Qt::RoundCap,Qt::RoundJoin));
+        p.setBrush(Qt::NoBrush);
+        p.drawRoundedRect(a.rect.normalized(),2,2);
+        break;
+    }
+    case Tool::Arrow:{
+        drawArrow(p,a.p1,a.p2,a.color,a.width);
+        break;
+    }
+    case Tool::Pen:{
+        p.setPen(QPen(a.color, a.width, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+        p.setBrush(Qt::NoBrush);
+        p.drawPath(a.path);
+        break;
+    }
+    case Tool::Mosaic:{
+        drawMosaic(p,shot,a.rect.normalized(),a.block);
+        break;
+    }
+    case Tool::Text:{
+        QFont f = Theme::uiFont(1,true);
+        f.setPixelSize(a.fontSize);
+
+        const QFontMetrics fm(f);
+        QPainterPath path;
+        path.addText(0,fm.ascent(),f,a.text);
+        p.translate(a.textPos);
+
+        p.setPen(QPen(QColor(0, 0, 0, 170), qMax(2.0, a.fontSize * 0.14),
+                      Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+        p.setBrush(Qt::NoBrush);
+        p.drawPath(path);
+
+        p.setPen(Qt::NoPen);
+        p.fillPath(path,a.color);
+        break;
+    }
+    default : {
+        break;
+    }
+    }
+
+    p.restore();
+}
+
+QImage renderRegion(const QImage &shot, const QRect &sel, const QVector<Annotation> &anns)
+{
+    if (shot.isNull() || !sel.isValid() || sel.isEmpty())
+        return QImage();
+    const qreal dpr = shot.devicePixelRatio() > 0 ? shot.devicePixelRatio() : 1.0;
+
+    QRect pxRect(qRound(sel.x()*dpr),qRound(sel.y()*dpr),qRound(sel.width()*dpr),qRound(sel.height()*dpr));
+    pxRect = pxRect.intersected(QRect(QPoint(0,0),shot.size()));
+    if (pxRect.isEmpty()){
+        return QImage();
+    }
+
+    QImage out = shot.copy(pxRect);
+    out.setDevicePixelRatio(dpr);
+    QPainter p(&out);
+    p.setRenderHint(QPainter::Antialiasing,true);
+    p.translate(-sel.topLeft());
+    for(const Annotation&a:anns){
+        paintOne(p,shot,a);
+    }
+    p.end();
+    return out;
+}
+
+
+
 }

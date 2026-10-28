@@ -50,6 +50,47 @@ const QColor kIconInk("#dcdce8");
 
 }  // namespace
 
+QIcon Theme::appIcon(int size)
+{
+    const qreal s = size;
+    QPixmap pm = makeCanvas(size, 2.0);
+
+    QPainter p(&pm);
+    p.setRenderHint(QPainter::Antialiasing, true);
+
+    p.setPen(Qt::NoPen);
+    p.setBrush(QColor(QStringLiteral("#1d8fe1")));
+    p.drawRoundedRect(QRectF(s * 0.04, s * 0.04, s * 0.92, s * 0.92),
+                      s * 0.22, s * 0.22);
+
+    p.setPen(QPen(Qt::white, qMax<qreal>(1.4, s * 0.075),
+                  Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+    p.setBrush(Qt::NoBrush);
+
+    const qreal left = s * 0.25;
+    const qreal right = s * 0.75;
+    const qreal top = s * 0.25;
+    const qreal bottom = s * 0.75;
+    const qreal arm = s * 0.16;
+
+    p.drawLine(QPointF(left + arm, top), QPointF(left, top));
+    p.drawLine(QPointF(left, top), QPointF(left, top + arm));
+    p.drawLine(QPointF(right - arm, top), QPointF(right, top));
+    p.drawLine(QPointF(right, top), QPointF(right, top + arm));
+    p.drawLine(QPointF(left, bottom - arm), QPointF(left, bottom));
+    p.drawLine(QPointF(left, bottom), QPointF(left + arm, bottom));
+    p.drawLine(QPointF(right, bottom - arm), QPointF(right, bottom));
+    p.drawLine(QPointF(right, bottom), QPointF(right - arm, bottom));
+
+    p.setPen(QPen(Qt::white, qMax<qreal>(1.0, s * 0.045),
+                  Qt::SolidLine, Qt::RoundCap));
+    p.drawLine(QPointF(s * 0.42, s * 0.5), QPointF(s * 0.58, s * 0.5));
+    p.drawLine(QPointF(s * 0.5, s * 0.42), QPointF(s * 0.5, s * 0.58));
+
+    p.end();
+    return QIcon(pm);
+}
+
 QIcon Theme::toolIcon(Tool t, int size)
 {
     const qreal S = size;
@@ -115,6 +156,21 @@ QIcon Theme::toolIcon(Tool t, int size)
         }
         break;
     }
+    case Tool::Cursor:{
+        QPainterPath cursor;
+        cursor.moveTo(S * 0.22, S * 0.10);   // 尖
+        cursor.lineTo(S * 0.22, S * 0.72);   // 左边缘竖直向下
+        cursor.lineTo(S * 0.36, S * 0.58);   // 内侧凹口
+        cursor.lineTo(S * 0.50, S * 0.88);   // 尾巴右下
+        cursor.lineTo(S * 0.62, S * 0.82);   // 尾巴右下外侧
+        cursor.lineTo(S * 0.48, S * 0.52);   // 回到主体右侧
+        cursor.lineTo(S * 0.68, S * 0.52);   // 右侧水平（可选）
+        cursor.closeSubpath();
+        p.setPen(Qt::NoPen);
+        p.setBrush(kIconInk);
+        p.drawPath(cursor);
+        break;
+    }
 
     case Tool::None:
         break;
@@ -152,7 +208,8 @@ QIcon Theme::actionIcon(const char *name, int size)
         p.setBrush(kIconInk);
         p.drawPolygon(head);
 
-    } else if (n == QLatin1String("trash")) {
+    }
+    else if (n == QLatin1String("trash")) {
         p.setPen(pen);
         p.setBrush(Qt::NoBrush);
         p.drawLine(P(0.18, 0.28), P(0.82, 0.28));        // 盖

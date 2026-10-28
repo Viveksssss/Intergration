@@ -45,4 +45,7 @@ private:
     QTextDocument   *_doc = nullptr;
     QVector<Region>  _regions;
     QHash<int, int>  _startIndex;   // startBlock -> _regions 下标
+    // 正在 applyVisibility 里触发重排版时置位。
+    // 重排版可能同步引发一次文本变化通知，进而回到这里，直接挡掉。
+    bool             _applying = false;
 };

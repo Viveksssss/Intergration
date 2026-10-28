@@ -38,6 +38,8 @@ inline const QColor kInkWhite    ("#ffffff");
 QFont uiFont(int pt, bool bold = false);
 QFont monoFont(int pt);
 
+// 程序与系统托盘图标
+QIcon appIcon(int size = 32);
 // 工具图标：全部用 QPainter 现画，不依赖任何图片资源
 QIcon toolIcon(Tool t, int size = 18);
 // 动作图标："undo" / "trash" / "copy" / "save" / "close"

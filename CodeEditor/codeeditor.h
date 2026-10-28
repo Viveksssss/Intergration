@@ -2,6 +2,7 @@
 #define CODEEDITOR_H
 
 #include <QPlainTextEdit>
+#include <functional>
 #include "foldmanager.h"
 #include "BracketMatcher.h"
 class CodeHighlighter;
@@ -45,6 +46,13 @@ private:
 
     int   blockNumberAtViewportY(int y) const;
     QRect blockRectInViewport(int blockNumber) const;
+
+    // 折叠隐藏的总行数（用于判断 rescan 前后布局有没有变）
+    int   foldHiddenLines() const;
+    // 把视图顶部拉回指定 block（折叠状态变化后防止位置突变）
+    void  scrollToBlock(int blockNumber);
+    // 执行一次折叠状态变更，并保证「屏幕顶部那行」在变更前后不变
+    void  changeFold(const std::function<void()> &change);
     // QWidget interface
 protected:
     virtual void resizeEvent(QResizeEvent *event) override;

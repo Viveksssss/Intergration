@@ -2,11 +2,11 @@
 #include "snippingoverlay.h"
 
 #include <QApplication>
-#include <QLabel>
-#include <QGuiApplication>
-#include <QScreen>
-#include <QTimer>
+#include <QMessageBox>
 #include <QPixmap>
+#include <QSystemTrayIcon>
+#include <QTimer>
+
 #include "shotcapture.h"
 #include "theme.h"
 
@@ -36,7 +36,13 @@ int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
 
+    app.setApplicationName(QStringLiteral("SnipShot"));
+    app.setApplicationDisplayName(QStringLiteral("SnipShot"));
+    app.setApplicationVersion(QStringLiteral("0.1"));
+    app.setOrganizationName(QStringLiteral("SnipShot"));
     app.setFont(Theme::uiFont(10));
+    app.setWindowIcon(Theme::appIcon(64));
+    app.setQuitOnLastWindowClosed(false);
 
     QString shotPath;
     bool useRealScreen = false;
@@ -53,13 +59,14 @@ int main(int argc, char *argv[])
         return app.exec();
     }
 
-    const QImage shot = ShotCapture::grabAll();
-    if (shot.isNull())
+    if (!QSystemTrayIcon::isSystemTrayAvailable()) {
+        QMessageBox::critical(
+            nullptr, QStringLiteral("SnipShot"),
+            QStringLiteral("当前系统托盘不可用，SnipShot 无法启动。"));
         return 1;
+    }
 
-    auto *overlay = new SnippingOverlay(shot);
-    overlay->show();
-    overlay->raise();
-
+    MainWindow mainWindow;
+    mainWindow.hide();
     return app.exec();
 }

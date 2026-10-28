@@ -4,6 +4,7 @@
 #include "theme.h"
 
 #include <QWidget>
+#include <QScrollBar>
 #include <QTextBlock>
 #include <QPainter>
 #include <QtOpenGLWidgets/QtOpenGLWidgets>
@@ -147,17 +148,12 @@ void CodeEditor::handleGutterClick(const QPoint &pos)
         return;
 
     if (pos.x() <= kFoldMarkerWidth + 20 && _folds.hasFoldAt(bn)) {
-        _folds.toggle(bn);
-
         // 折叠后把光标移到这一行，否则光标还留在被隐藏的区域里，
         // 下一帧的 revealCursor() 会立刻把它展开回来。
-
-        QTextCursor c(document()->findBlockByNumber(bn));
-        setTextCursor(c);
-
-        _gutter->update();
-        viewport()->update();
-        emit foldStateChanged();
+        changeFold([this, bn] {
+            _folds.toggle(bn);
+            setTextCursor(QTextCursor(document()->findBlockByNumber(bn)));
+        });
         return;
     }
 
@@ -197,30 +193,20 @@ void CodeEditor::toggleFoldAtCursor()
     if (target < 0){
         return;
     }
-    _folds.toggle(target);
-    QTextCursor c (document()->findBlockByNumber(target));
-    setTextCursor(c);
-
-    _gutter->update();
-    viewport()->update();
-    emit foldStateChanged();
-
+    changeFold([this, target] {
+        _folds.toggle(target);
+        setTextCursor(QTextCursor(document()->findBlockByNumber(target)));
+    });
 }
 
 void CodeEditor::foldAll()
 {
-    _folds.foldAll();
-    _gutter->update();
-    viewport()->update();
-    emit foldStateChanged();
+    changeFold([this] { _folds.foldAll(); });
 }
 
 void CodeEditor::unfoldAll()
 {
-    _folds.unfoldAll();
-    _gutter->update();
-    viewport()->update();
-    emit foldStateChanged();
+    changeFold([this] { _folds.unfoldAll(); });
 }
 
 bool CodeEditor::foldsAreCollapsed(int blockNumber) const
@@ -266,6 +252,10 @@ QString CodeEditor::statsText() const
 */
 void CodeEditor::onCursorPositionChanged()
 {
+    // 光标落进被折叠的区域时自动展开（handleGutterClick 的注释一直这么写，
+    // 但 revealCursor() 之前从来没被调用过，属于死代码）。
+    revealCursor();
+
     refreshExtraSelections();
     if (_gutter) _gutter->update();
     const QTextCursor c = textCursor();
@@ -311,12 +301,89 @@ void CodeEditor::onTextChanged()
 
     if (!structural)return;
 
+    // ⚠️ rescan 可能改变「哪些行被折叠隐藏」，隐藏行数一变，
+    //    QPlainTextEdit 垂直滚动条的 range 就跟着变，当前 value 会被 clamp，
+    //    用户看到的就是「明明只是滑了一下，视图却突然跳了 40 行」。
+    //    所以先把顶部行记下来，rescan 后再拉回去。
+    const int hiddenBefore = foldHiddenLines();
+    const QTextBlock topBlock = firstVisibleBlock();
+    const int topNumber = topBlock.isValid() ? topBlock.blockNumber() : -1;
+
     _rescanning = true;
     _folds.rescan();
     _rescanning = false;
 
+    // 只有折叠布局真的变了才回滚滚动位置，避免每次输入都做一遍无谓的校正
+    if (topNumber >= 0 && foldHiddenLines() != hiddenBefore)
+        scrollToBlock(topNumber);
+
     updateGutterWidth();
     if (_gutter)_gutter->update();
+    viewport()->update();
+    emit foldStateChanged();
+}
+
+// ---------------------------------------------------------------------------
+//  rescan 之后保持视图位置
+// ---------------------------------------------------------------------------
+int CodeEditor::foldHiddenLines() const
+{
+    int n = 0;
+    for (const FoldManager::Region &r : _folds.regions()) {
+        if (r.collapsed)
+            n += r.hiddenLines();
+    }
+    return n;
+}
+
+void CodeEditor::scrollToBlock(int blockNumber)
+{
+    QTextDocument *doc = document();
+    if (!doc || blockNumber < 0 || blockNumber >= doc->blockCount())
+        return;
+
+    QTextBlock target = doc->findBlockByNumber(blockNumber);
+    if (!target.isValid() || !target.isVisible())
+        return;              // 顶部那行自己被折进去了：交给 Qt 决定，别强行跳
+
+    // QPlainTextEdit 垂直滚动条的单位是「行」，value 的语义是
+    // 「顶部这一行在【可见行序列】里的下标」——折叠隐藏的行不占位置，
+    // 所以不能直接把 blockNumber 当 value 用，得数一遍它前面有多少可见行。
+    int visibleIndex = 0;
+    for (QTextBlock b = doc->firstBlock();
+         b.isValid() && b.blockNumber() < blockNumber; b = b.next()) {
+        if (b.isVisible())
+            ++visibleIndex;
+    }
+
+    QScrollBar *v = verticalScrollBar();
+    v->setValue(qBound(v->minimum(), visibleIndex, v->maximum()));
+}
+
+// ---------------------------------------------------------------------------
+//  折叠状态变更的统一入口
+//
+//  折叠会隐藏 / 显示一批行，文档的逻辑高度随之变化，于是：
+//    · 折叠后内容变短 → 滚动条 max 变小 → 当前 value 被 clamp 到底部
+//    · 展开后内容变长 → 顶部那行上面多了若干行 → 画面整体上移
+//  两种都会让人觉得「我只点了一下折叠，视图却跳了」。
+//
+//  所以在变更前后把「屏幕顶部那行」记下来，变更后再拉回去。
+//  必须用 blockNumber 记录，不能用滚动条的 value —— value 数的是「可见行」，
+//  折叠前后同一行对应的 value 会变，直接拿 value 恢复反而会错位。
+// ---------------------------------------------------------------------------
+void CodeEditor::changeFold(const std::function<void()> &change)
+{
+    const QTextBlock top = firstVisibleBlock();
+    const int topNumber = top.isValid() ? top.blockNumber() : -1;
+
+    change();            // 内部走 applyVisibility → markContentsDirty 重新排版
+
+    if (topNumber >= 0)
+        scrollToBlock(topNumber);
+
+    updateGutterWidth();
+    if (_gutter) _gutter->update();
     viewport()->update();
     emit foldStateChanged();
 }

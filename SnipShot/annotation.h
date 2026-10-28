@@ -19,7 +19,8 @@ enum class Tool {
     Arrow,     // 箭头
     Pen,       // 自由画笔
     Text,      // 文字
-    Mosaic     // 马赛克
+    Mosaic,     // 马赛克
+    Cursor      // 光标
 };
 
 struct Annotation
@@ -64,6 +65,9 @@ inline bool Annotation::isEmpty() const
 inline void Annotation::translateBy(const QPointF &d)
 {
     switch (tool) {
+    case Tool::Cursor:{
+        break;
+    }
     case Tool::Rect:
     case Tool::Mosaic:
         rect.translate(d);
