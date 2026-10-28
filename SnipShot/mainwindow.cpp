@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 
+#include "globalhotkey.h"
 #include "shotcapture.h"
 #include "snippingoverlay.h"
 #include "theme.h"
@@ -10,6 +11,7 @@
 #include <QDesktopServices>
 #include <QDir>
 #include <QGuiApplication>
+#include <QKeySequence>
 #include <QMenu>
 #include <QMessageBox>
 #include <QStandardPaths>
@@ -24,6 +26,7 @@ MainWindow::MainWindow(QWidget *parent)
     setWindowTitle(QStringLiteral("SnipShot"));
     setWindowIcon(Theme::appIcon());
     setupTrayIcon();
+    setupGlobalHotkey();
 }
 
 MainWindow::~MainWindow() = default;
@@ -34,7 +37,11 @@ void MainWindow::setupTrayIcon()
 
     m_regionCaptureAction = menu->addAction(
         Theme::appIcon(20), QStringLiteral("截图"),
-        this, &MainWindow::requestRegionCapture);
+        this, [this] { requestRegionCapture(); });
+    m_regionCaptureAction->setShortcut(
+        QKeySequence(QStringLiteral("Ctrl+Alt+A")));
+    m_regionCaptureAction->setToolTip(
+        QStringLiteral("开始区域截图（全局快捷键 Ctrl+Alt+A）"));
 
     auto *fullScreenAction = menu->addAction(
         style()->standardIcon(QStyle::SP_ComputerIcon),
@@ -76,7 +83,21 @@ void MainWindow::setupTrayIcon()
     m_trayIcon->show();
 }
 
-void MainWindow::requestRegionCapture()
+void MainWindow::setupGlobalHotkey()
+{
+    m_globalHotkey = new GlobalHotkey(this);
+    connect(m_globalHotkey, &GlobalHotkey::activated, this,
+            [this] { requestRegionCapture(false); });
+
+    if (!m_globalHotkey->registerShortcut()) {
+        showTrayMessage(
+            QStringLiteral("快捷键注册失败"),
+            QStringLiteral("Ctrl+Alt+A 可能已被其他程序占用。"),
+            true);
+    }
+}
+
+void MainWindow::requestRegionCapture(bool waitForTrayMenu)
 {
     if (m_overlay) {
         m_overlay->show();
@@ -88,7 +109,7 @@ void MainWindow::requestRegionCapture()
         return;
 
     m_captureScheduled = true;
-    QTimer::singleShot(220, this, [this] {
+    QTimer::singleShot(waitForTrayMenu ? 220 : 0, this, [this] {
         m_captureScheduled = false;
         performRegionCapture();
     });
@@ -179,7 +200,8 @@ void MainWindow::showAboutDialog()
         QStringLiteral(
             "<h3>SnipShot</h3>"
             "<p>轻量截图与标注工具</p>"
-            "<p>单击托盘图标开始截图，右键查看更多操作。</p>"
+            "<p>全局快捷键：Ctrl+Alt+A</p>"
+            "<p>也可以单击托盘图标开始截图，右键查看更多操作。</p>"
             "<p>快捷键：R 矩形，A 箭头，P 画笔，T 文字，"
             "M 马赛克；Enter 复制，Ctrl+S 保存，Esc 取消。</p>"));
 }

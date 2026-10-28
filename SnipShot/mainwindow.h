@@ -5,6 +5,7 @@
 #include <QPointer>
 
 class QAction;
+class GlobalHotkey;
 class QImage;
 class QSystemTrayIcon;
 class SnippingOverlay;
@@ -18,7 +19,8 @@ public:
 
 private:
     void setupTrayIcon();
-    void requestRegionCapture();
+    void setupGlobalHotkey();
+    void requestRegionCapture(bool waitForTrayMenu = true);
     void requestFullScreenCapture();
     void performRegionCapture();
     void performFullScreenCapture();
@@ -29,6 +31,7 @@ private:
                          bool warning = false);
 
     QSystemTrayIcon *m_trayIcon = nullptr;
+    GlobalHotkey *m_globalHotkey = nullptr;
     QAction *m_regionCaptureAction = nullptr;
     QPointer<SnippingOverlay> m_overlay;
     bool m_captureScheduled = false;

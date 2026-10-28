@@ -16,6 +16,8 @@ set(PROJECT_SOURCES
         main.cpp
         mainwindow.cpp
         mainwindow.h
+        globalhotkey.h
+        globalhotkey.cpp
         annotation.h
         shotcapture.h
         shotcapture.cpp
